@@ -1,0 +1,82 @@
+<?php     
+//require("./includes/database.php");  
+require("sendmail/PHPExcel-1.8/Classes/PHPExcel.php");  
+require("sendmail/PHPExcel-1.8/Classes/PHPExcel/IOFactory.php");    
+require("sendmail/class.phpmailer.php");  
+require("sendmail/class.smtp.php"); 
+require("sendmail/PHPMailerAutoload.php");  
+//date_default_timezone_set('PRC');    
+ignore_user_abort();//后台运行    
+set_time_limit(0);//取消脚本运行时间的超时上限  
+$interval = 60*1;//每隔一分钟运行一次   
+do{  
+$mail=new PHPMailer();     
+$mail->IsSMTP();  
+$mail->SMTPAuth=true;  
+$mail->Host="xxx.yyyyy.com";  
+$Port=25;  
+$mail->Username="zzz@yyyyy.com"; 
+$mail->Password="123";  
+$mail->SMTPDebug = 2;  
+$mail->From="zzz@yyyyy.com";  
+$mail->FromName="DOR";  
+$mail->WordWrap=50;  
+$mail->Subject="[DOR]Weekly email notice";  
+$mail->AltBody="hello";  
+$mail->MsgHTML=("hi how are you <br><b>hello</b>");  
+$mail->IsHTML(true);  
+$mail->addAddress('jjj@yyyyy.com', 'jjjj');     // Add a recipient     
+$mail->addCC('jjj@yyyyy.com');  
+$mail->Subject = 'Here is the subject';     
+$mail->Body    = 'This is the HTML message body <b>in bold!</b>';    
+$mail->AltBody = 'This is the body in plain text for non-HTML mail clients'; 
+//echo "<p>try to  pull out...</p>"
+  
+	//-----------pull out NG data and import the data to excel----------  
+	
+$dir = dirname(__FILE__);   
+$objexcel = new PHPExcel(); 
+$objsheet=$objexcel->getActiveSheet();  
+$db=new drive_db(); 
+$conn=$db->conn;  
+try  
+{   
+$current_table=$conn->query("SELECT * FROM current_fx_table");   
+$table_info=$current_table->fetchAll();  
+echo  "<p>ALL NG systems:</p>";
+$golden_table=$conn->query("SELECT * FROM golden_system_table");  
+$golden_info=$golden_table->fetchAll();
+      for($i=0;$i<count($table_info);$i++)   
+			{//check MB    
+				if($table_info[$i]['STATUS']!="OFF")    
+			 	{     
+				$mb_index=array_search($table_info[$i]['MB'], array_column($golden_info, 'MB'));    
+				if (empty($mb_index) && strlen($mb_index) == 0)     
+				{//not match      
+				//echo "<tr>";      
+				//echo "<td>",$table_info[$i]['STATUS'],"</td>";     
+				//$objsheet->setActiveSheetIndex(0)      
+				//          ->setCellValue("[$i][1]",CellByColumnAndRow)     
+				$objsheet->setCellValueByColumnAndRow($i,1,$table_info[$i]['STATUS']);      
+				$objWriter=PHPExcel_IOFactory::createWriter($objExcel);       
+				$objWriter->save($dir.'/NG_data.xlsx'); 
+				}
+			}   
+		}
+}catch(PDOException $ex)
+		{    
+				//echo $ex->getMessage();
+				echo "<p>generate excel failed...</p>"
+		 } 
+$mail->addAttachment('C:/inetpub/wwwroot/eddy_ehs/NG_data.xls','NG_data.xls')  
+if(!$mail->Send()){ 
+	echo "Error:".$mail->ErrorInfo;  
+	return false; 
+	}  
+	else 
+	{ 
+	echo "success!"; 
+	}  
+	sleep($interval);
+	}while(true);
+	?>
